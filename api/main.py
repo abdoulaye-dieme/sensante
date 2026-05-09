@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 import joblib
 import numpy as np
+from fastapi.middleware.cors import CORSMiddleware
 
 #--- Schemas Pydantic--
 class PatientInput(BaseModel):
@@ -33,6 +34,15 @@ app = FastAPI(
     version="0.2.0"
 )
 
+# Autoriser les requetes depuis le frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 #--- Charger le modele et les encodeurs au demarrage--
 print("Chargement du modele...")
 model = joblib.load("models/model.pkl")
@@ -42,7 +52,6 @@ feature_cols = joblib.load("models/feature_cols.pkl")
 print(f"Modele charge : {type(model).__name__}")
 print(f"Classes : {list(model.classes_)}")
 
-
 #  ---   Routes  ---
 @app.get("/health")
 def health_check():
@@ -51,6 +60,14 @@ def health_check():
         "status": "ok",
         "message": "SenSante API is running"
 }
+
+@app.get("/model-info")
+def model_info():
+    return {
+        "type": type(model).__name__,
+        "classes": list(model.classes_),
+        "nb_features": len(feature_cols)
+    }
 
 @app.post("/predict", response_model=DiagnosticOutput)
 def predict(patient: PatientInput):
